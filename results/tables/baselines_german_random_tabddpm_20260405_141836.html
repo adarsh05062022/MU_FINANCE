@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Baseline Results: german / tabddpm</title>
+  <style>
+    :root {
+      --bg: #f5f1e8;
+      --card: #fffdf8;
+      --ink: #1d1b16;
+      --muted: #6c655b;
+      --line: #ddd2c0;
+      --head: #efe3cd;
+      --strong: #1f7a45;
+      --partial: #9a6700;
+      --weak: #b42318;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at top left, #f8e8c4 0, transparent 28%),
+        linear-gradient(180deg, #f8f4ec 0%, var(--bg) 100%);
+      color: var(--ink);
+      font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+    }
+    .wrap {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 32px 24px 48px;
+    }
+    .hero {
+      margin-bottom: 18px;
+    }
+    h1 {
+      margin: 0;
+      font-size: 32px;
+      line-height: 1.1;
+    }
+    .subtitle {
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 16px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      overflow: hidden;
+      box-shadow: 0 18px 50px rgba(76, 58, 28, 0.08);
+    }
+    .legend {
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, #fffaf1 0%, #fbf5ea 100%);
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .table-wrap {
+      overflow-x: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 1080px;
+    }
+    th, td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      white-space: nowrap;
+      font-size: 14px;
+    }
+    th {
+      position: sticky;
+      top: 0;
+      background: var(--head);
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    tr:hover td {
+      background-color: rgba(117, 91, 43, 0.06);
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      color: white;
+    }
+    .badge.strong { background: var(--strong); }
+    .badge.partial { background: var(--partial); }
+    .badge.weak { background: var(--weak); }
+    .footer {
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="hero">
+      <h1>Baseline Results: german / tabddpm</h1>
+      <p class='subtitle'>forget_strategy=random | methods=full_retrain,gradient_diff,random_labels</p>
+    </div>
+    <div class="card">
+      <div class="legend">
+        Green cells are better, red cells are worse. For <code>mia_score</code>, values closer to <code>0.5</code> are better.
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>method</th><th>unlearning_signal</th><th>mia_score</th><th>forget_accuracy</th><th>forget_confidence</th><th>js_divergence</th><th>kl_divergence</th><th>relearn_steps</th><th>retain_auc</th><th>test_auc</th><th>wall_clock_seconds</th><th>speedup_vs_retrain</th><th>changed_params</th><th>total_params</th><th>pct_params_changed</th><th>delta_eo</th><th>ece</th></tr></thead>
+          <tbody>
+            <tr><td>full_retrain</td><td><span class="badge strong">Strong</span></td><td style="background:rgba(93, 209, 126, 0.28)">0.557</td><td style="background:rgba(193, 147, 117, 0.28)">0.686</td><td>0.276</td><td style="background:rgba(74, 222, 128, 0.28)">0.000</td><td style="background:rgba(74, 222, 128, 0.28)">0.000</td><td>10.000</td><td style="background:rgba(98, 206, 125, 0.28)">0.860</td><td style="background:rgba(118, 194, 124, 0.28)">0.744</td><td style="background:rgba(146, 176, 121, 0.28)">4.182</td><td style="background:rgba(230, 123, 114, 0.28)">1.000</td><td>308352.000</td><td>308353.000</td><td>100.000</td><td>0.475</td><td style="background:rgba(94, 209, 126, 0.28)">0.117</td></tr><tr><td>gradient_diff_alpha_2.0</td><td><span class="badge strong">Strong</span></td><td style="background:rgba(113, 197, 124, 0.28)">0.614</td><td style="background:rgba(198, 144, 117, 0.28)">0.714</td><td>0.332</td><td style="background:rgba(77, 219, 127, 0.28)">0.023</td><td style="background:rgba(88, 212, 126, 0.28)">0.085</td><td>1.000</td><td style="background:rgba(116, 195, 124, 0.28)">0.754</td><td style="background:rgba(116, 195, 124, 0.28)">0.755</td><td style="background:rgba(148, 175, 121, 0.28)">4.275</td><td style="background:rgba(230, 123, 114, 0.28)">0.978</td><td>299910.000</td><td>308353.000</td><td>97.262</td><td>0.168</td><td style="background:rgba(96, 208, 126, 0.28)">0.127</td></tr><tr><td>random_labels</td><td><span class="badge weak">Weak</span></td><td style="background:rgba(243, 116, 113, 0.28)">0.986</td><td style="background:rgba(205, 139, 116, 0.28)">0.757</td><td>0.407</td><td style="background:rgba(81, 217, 127, 0.28)">0.041</td><td style="background:rgba(99, 206, 125, 0.28)">0.145</td><td>1.000</td><td style="background:rgba(116, 195, 124, 0.28)">0.756</td><td style="background:rgba(110, 198, 124, 0.28)">0.788</td><td style="background:rgba(84, 215, 127, 0.28)">0.608</td><td style="background:rgba(128, 187, 123, 0.28)">6.881</td><td>307769.000</td><td>308353.000</td><td>99.811</td><td>0.000</td><td style="background:rgba(97, 206, 125, 0.28)">0.138</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="footer">
+      Saved automatically from the experiment runner so you can inspect each run without reformatting the CSV by hand.
+    </div>
+  </div>
+</body>
+</html>

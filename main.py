@@ -4,6 +4,7 @@ LoRA-Credit-Unlearn: Parameter-Efficient Machine Unlearning for Transformer-Base
 Entry point. Run the full pipeline with:
   python main.py
   python main.py --dataset german --arch ft_transformer --mode full
+  python main.py --dataset german --arch tabddpm --mode quick
   python main.py --mode quick   # fast smoke test
 
 Modes:
@@ -28,7 +29,7 @@ def parse_args():
                         choices=["german", "gmsc"],
                         help="Dataset to use")
     parser.add_argument("--arch", default="ft_transformer",
-                        choices=["ft_transformer", "tab_transformer"],
+                        choices=["ft_transformer", "tab_transformer", "tabddpm"],
                         help="Model architecture")
     parser.add_argument("--mode", default="quick",
                         choices=["full", "quick", "ablation", "scalability"],

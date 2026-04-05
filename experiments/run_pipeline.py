@@ -34,6 +34,7 @@ from unlearning.retain_adapter import run_retain_adapter
 from unlearning.baselines import (
     baseline_full_retrain, baseline_gradient_ascent,
     baseline_finetune_retain, baseline_sisa, baseline_influence_functions,
+    baseline_random_labels,
 )
 from evaluation.metrics import (
     full_evaluation, forget_set_accuracy, compute_auc, get_predictions
@@ -267,6 +268,18 @@ def run_pipeline(cfg: dict = None) -> dict:
                             verbose=True)
         r["elapsed"] = h_if["elapsed"]
         baseline_results["influence_fn"] = r
+
+        if cfg["arch"] == "tabddpm":
+            print("\n  3f. Random Labels")
+            m_rl, h_rl = baseline_random_labels(
+                base_model, forget_ds, retain_ds, val_ds, device,
+                batch_size=cfg["batch_size"], seed=cfg["seed"], verbose=cfg["verbose"]
+            )
+            r = full_evaluation(m_rl, base_model, forget_ds, retain_ds, test_ds,
+                                device, base_forget_acc, elapsed_seconds=h_rl["elapsed"],
+                                verbose=True)
+            r["elapsed"] = h_rl["elapsed"]
+            baseline_results["random_labels"] = r
 
     all_results["baselines"] = baseline_results
 

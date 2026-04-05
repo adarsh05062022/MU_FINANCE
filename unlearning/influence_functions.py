@@ -79,6 +79,8 @@ def unlearn(model, D_forget, D_retain, D_val, config, device):
         recursion_depth: int (LiSSA iterations, default 500)
         batch_size: int      (default 256)
         max_retain_samples: int (subsample retain for Hessian, default 5000)
+        max_h_estimate_norm: float (fallback if LiSSA explodes, default 1e4)
+        max_update_norm: float (clip final parameter-update norm, default 5.0)
     """
     model = copy.deepcopy(model).to(device)
     criterion = nn.BCEWithLogitsLoss()
@@ -88,6 +90,8 @@ def unlearn(model, D_forget, D_retain, D_val, config, device):
     recursion_depth = config.get("recursion_depth", 500)
     batch_size = config.get("batch_size", 256)
     max_retain = config.get("max_retain_samples", 5000)
+    max_h_estimate_norm = config.get("max_h_estimate_norm", 1e4)
+    max_update_norm = config.get("max_update_norm", 5.0)
     verbose = config.get("verbose", True)
 
     # Step 1: Compute gradient of forget loss
@@ -111,6 +115,8 @@ def unlearn(model, D_forget, D_retain, D_val, config, device):
     else:
         retain_for_hessian = D_retain
 
+    use_identity_fallback = retain_for_hessian is None
+
     if retain_for_hessian is not None:
         retain_loader = make_loader(retain_for_hessian, batch_size=batch_size, shuffle=True)
         retain_iter = cycle(iter(retain_loader))
@@ -126,28 +132,57 @@ def unlearn(model, D_forget, D_retain, D_val, config, device):
 
             try:
                 hvp = hessian_vector_product(model, x_num, x_cat, y, h_estimate, criterion, device)
-                h_estimate = v + (1 - damping) * h_estimate - hvp / scale
+                next_h = v + (1 - damping) * h_estimate - hvp / scale
             except RuntimeError:
                 # HVP can fail for certain architectures; fall back to identity approx
                 if verbose and i == 0:
                     print("    [Warn] HVP failed, using identity Hessian approximation")
+                use_identity_fallback = True
                 break
+
+            if not torch.isfinite(next_h).all():
+                if verbose:
+                    print("    [Warn] LiSSA produced non-finite values; using identity Hessian approximation")
+                use_identity_fallback = True
+                break
+
+            next_norm = next_h.norm().item()
+            if next_norm > max_h_estimate_norm:
+                if verbose:
+                    print(f"    [Warn] LiSSA norm exploded to {next_norm:.4f}; using identity Hessian approximation")
+                use_identity_fallback = True
+                break
+
+            h_estimate = next_h
 
             if verbose and (i + 1) % 100 == 0:
                 print(f"    LiSSA iteration {i+1}/{recursion_depth} | h_estimate norm={h_estimate.norm().item():.4f}")
-    else:
-        # No retain set provided -- use identity approximation
-        h_estimate = forget_grad / damping
+
+    if use_identity_fallback:
+        h_estimate = forget_grad / max(damping, 1e-8)
 
     # Step 3: Update parameters
     # theta* = theta - (1/|D_retain|) * H^{-1} * grad_L(D_forget)
     n_retain = len(D_retain) if D_retain is not None else 1
+    update_vector = h_estimate / max(n_retain, 1)
+    if not torch.isfinite(update_vector).all():
+        if verbose:
+            print("    [Warn] Non-finite update detected; sanitizing before applying")
+        update_vector = torch.nan_to_num(update_vector, nan=0.0, posinf=0.0, neginf=0.0)
+
+    update_norm = update_vector.norm().item()
+    if update_norm > max_update_norm:
+        scale_factor = max_update_norm / max(update_norm, 1e-12)
+        update_vector = update_vector * scale_factor
+        if verbose:
+            print(f"    [Info] Clipped influence-function update norm {update_norm:.4f} -> {max_update_norm:.4f}")
+
     with torch.no_grad():
         offset = 0
         for param in model.parameters():
             param_size = param.numel()
-            update = h_estimate[offset:offset + param_size].reshape(param.shape)
-            param.data -= update / n_retain
+            update = update_vector[offset:offset + param_size].reshape(param.shape)
+            param.data -= update
             offset += param_size
 
     return model

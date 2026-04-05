@@ -30,6 +30,8 @@ from unlearning.finetune_retain import unlearn as ft_retain_unlearn
 from unlearning.finetune_retain import finetune_retain_unlearn
 from unlearning.scrub import unlearn as scrub_unlearn_method
 from unlearning.scrub import scrub_unlearn
+from unlearning.random_labels import unlearn as random_labels_unlearn_method
+from unlearning.random_labels import random_labels_unlearn
 
 # Legacy baselines (kept for backward compatibility with existing pipeline)
 from unlearning.baselines import (
@@ -38,6 +40,7 @@ from unlearning.baselines import (
     baseline_finetune_retain,
     baseline_sisa,
     baseline_influence_functions,
+    baseline_random_labels,
 )
 
 # LoRA-based methods

@@ -1,0 +1,7 @@
+{
+  "dataset": "gmsc",
+  "arch": "tabddpm",
+  "forget_strategy": "random",
+  "forget_frac": 0.1,
+  "seed": 42
+}

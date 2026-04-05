@@ -1,6 +1,6 @@
 """
 Phase 1: Train the base credit scoring model M on the full training set D.
-Supports FT-Transformer and TabTransformer.
+Supports FT-Transformer, TabTransformer, and TabDDPM-style diffusion conditioning.
 Saves model checkpoint to disk for all subsequent unlearning experiments.
 """
 
@@ -16,6 +16,7 @@ from typing import Optional, Tuple
 from data.datasets import CreditDataset, make_loader
 from models.ft_transformer import FTTransformer
 from models.tab_transformer import TabTransformer
+from models.tabddpm import TabDDPM
 from models.lora import count_parameters
 
 
@@ -26,22 +27,43 @@ from models.lora import count_parameters
 def build_model(arch: str, num_num_features: int, cat_dims, device: torch.device,
                 d_model: int = 64, n_heads: int = 4, n_layers: int = 3,
                 dropout: float = 0.1) -> nn.Module:
+    effective_heads = max(1, min(n_heads, d_model))
+    while d_model % effective_heads != 0 and effective_heads > 1:
+        effective_heads -= 1
+
     if arch == "ft_transformer":
         model = FTTransformer(
             num_num_features=num_num_features,
             cat_dims=cat_dims,
             d_model=d_model,
-            n_heads=n_heads,
+            n_heads=effective_heads,
             n_layers=n_layers,
             dropout=dropout,
         )
     elif arch == "tab_transformer":
+        tab_d_model = max(d_model // 4, 16)
+        tab_heads = min(effective_heads, 4)
+        while tab_d_model % tab_heads != 0 and tab_heads > 1:
+            tab_heads -= 1
         model = TabTransformer(
             num_num_features=num_num_features,
             cat_dims=cat_dims,
-            d_model=max(d_model // 4, 16),
-            n_heads=min(n_heads, 4),
+            d_model=tab_d_model,
+            n_heads=tab_heads,
             n_layers=n_layers,
+            dropout=dropout,
+        )
+    elif arch == "tabddpm":
+        ddpm_d_model = max(d_model, 64)
+        ddpm_heads = min(effective_heads, 8)
+        while ddpm_d_model % ddpm_heads != 0 and ddpm_heads > 1:
+            ddpm_heads -= 1
+        model = TabDDPM(
+            num_num_features=num_num_features,
+            cat_dims=cat_dims,
+            d_model=ddpm_d_model,
+            n_heads=ddpm_heads,
+            n_layers=max(n_layers, 4),
             dropout=dropout,
         )
     else:
@@ -58,6 +80,9 @@ def compute_loss(model: nn.Module, batch, device: torch.device, criterion):
     x_num = x_num.to(device) if x_num.numel() > 0 else None
     x_cat = x_cat.to(device) if x_cat.numel() > 0 else None
     y = y.to(device)
+
+    if hasattr(model, "compute_training_loss"):
+        return model.compute_training_loss(x_num, x_cat, y, criterion)
 
     logits = model(x_num, x_cat)
     return criterion(logits, y)

@@ -33,11 +33,13 @@ def _get_model_confidence(model: nn.Module, dataset: CreditDataset,
                           device: torch.device) -> np.ndarray:
     """Get confidence features for MIA: [P(y=1), P(y=0), max_conf, entropy]."""
     probs, _ = get_predictions(model, dataset, device)
+    probs = np.nan_to_num(np.clip(probs, 1e-6, 1.0 - 1e-6), nan=0.5, posinf=1.0, neginf=0.0)
     conf_pos = probs
     conf_neg = 1 - probs
     max_conf = np.maximum(probs, 1 - probs)
     entropy = -(probs * np.log(probs + 1e-8) + (1 - probs) * np.log(1 - probs + 1e-8))
-    return np.stack([conf_pos, conf_neg, max_conf, entropy], axis=1)
+    return np.nan_to_num(np.stack([conf_pos, conf_neg, max_conf, entropy], axis=1),
+                         nan=0.0, posinf=1.0, neginf=0.0)
 
 
 def run_mia(
@@ -102,6 +104,7 @@ def run_mia(
 
     X_shadow = np.vstack(shadow_features)
     y_shadow = np.concatenate(shadow_labels)
+    X_shadow = np.nan_to_num(X_shadow, nan=0.0, posinf=1.0, neginf=0.0)
 
     # Train MIA attacker
     if attacker == "lr":
@@ -112,6 +115,7 @@ def run_mia(
 
     # Evaluate on forget set of TARGET model (expected: ≈ 50% if truly forgotten)
     forget_feats = _get_model_confidence(target_model, forget_ds, device)
+    forget_feats = np.nan_to_num(forget_feats, nan=0.0, posinf=1.0, neginf=0.0)
     # All samples in D_f were originally members → label = 1
     forget_true = np.ones(len(forget_feats))
     forget_preds = clf.predict(forget_feats)
@@ -128,6 +132,7 @@ def run_mia(
 
     # Also evaluate on retain set (should be high — model remembers D_r)
     retain_feats = _get_model_confidence(target_model, retain_ds, device)
+    retain_feats = np.nan_to_num(retain_feats, nan=0.0, posinf=1.0, neginf=0.0)
     retain_true = np.ones(len(retain_feats))
     retain_mia = accuracy_score(retain_true, clf.predict(retain_feats))
 
@@ -169,9 +174,9 @@ def loss_based_mia(
                 x_num = x_num.to(device) if x_num.numel() > 0 else None
                 x_cat = x_cat.to(device) if x_cat.numel() > 0 else None
                 y = y.to(device)
-                logits = model(x_num, x_cat)
+                logits = torch.nan_to_num(model(x_num, x_cat), nan=0.0, posinf=20.0, neginf=-20.0)
                 loss = criterion(logits, y)
-                losses.append(loss.cpu().numpy())
+                losses.append(np.nan_to_num(loss.cpu().numpy(), nan=0.0, posinf=1e6, neginf=1e6))
         return np.concatenate(losses)
 
     forget_losses = compute_per_sample_loss(target_model, forget_ds)

@@ -7,6 +7,7 @@ Baselines implemented:
   3. Fine-tune D_r   — fine-tune original model only on D_r (catastrophic forgetting risk)
   4. SISA            — simplified: re-partition + retrain affected shards
   5. Influence Fn    — Newton-step parameter update approximation
+  6. Random Labels   — relabel D_f and retrain on retain + corrupted forget data
 
 All return a model and a timing dict for fair comparison.
 """
@@ -20,6 +21,7 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 
 from data.datasets import CreditDataset, make_loader
 from train import train_model, evaluate
+from unlearning.random_labels import unlearn as random_labels_core_unlearn
 
 
 # ──────────────────────────────────────────────
@@ -291,3 +293,43 @@ def baseline_influence_functions(
     if verbose:
         print(f"    Influence fn elapsed: {elapsed:.1f}s")
     return model_if, history
+
+
+def baseline_random_labels(
+    model: nn.Module,
+    forget_ds: CreditDataset,
+    retain_ds: CreditDataset,
+    val_ds: CreditDataset,
+    device: torch.device,
+    epochs: int = 5,
+    batch_size: int = 128,
+    lr: float = 5e-5,
+    patience: int = 3,
+    forget_multiplier: int = 3,
+    seed: int = 42,
+    verbose: bool = True,
+) -> tuple:
+    """Random-label corruption baseline, primarily intended for TabDDPM."""
+    if verbose:
+        print("  [Baseline] Random Labels on D_f + D_r...")
+    t0 = time.time()
+    model_rl = random_labels_core_unlearn(
+        model,
+        forget_ds,
+        retain_ds,
+        val_ds,
+        {
+            "lr": lr,
+            "epochs": epochs,
+            "batch_size": batch_size,
+            "patience": patience,
+            "forget_multiplier": forget_multiplier,
+            "seed": seed,
+            "verbose": False,
+        },
+        device,
+    )
+    history = {"elapsed": time.time() - t0}
+    if verbose:
+        print(f"    Random-label elapsed: {history['elapsed']:.1f}s")
+    return model_rl, history

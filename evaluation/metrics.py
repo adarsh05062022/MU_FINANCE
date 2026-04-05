@@ -15,6 +15,14 @@ from sklearn.metrics import accuracy_score, roc_auc_score
 from data.datasets import CreditDataset, make_loader
 
 
+def _sanitize_logits_tensor(logits: torch.Tensor) -> torch.Tensor:
+    return torch.nan_to_num(logits, nan=0.0, posinf=20.0, neginf=-20.0)
+
+
+def _sanitize_probs_array(probs: np.ndarray) -> np.ndarray:
+    return np.nan_to_num(np.clip(probs, 1e-6, 1.0 - 1e-6), nan=0.5, posinf=1.0, neginf=0.0)
+
+
 @torch.no_grad()
 def get_predictions(
     model: nn.Module,
@@ -29,8 +37,9 @@ def get_predictions(
     for x_num, x_cat, y in loader:
         x_num = x_num.to(device) if x_num.numel() > 0 else None
         x_cat = x_cat.to(device) if x_cat.numel() > 0 else None
-        probs = torch.sigmoid(model(x_num, x_cat))
-        all_probs.append(probs.cpu().numpy())
+        logits = _sanitize_logits_tensor(model(x_num, x_cat))
+        probs = torch.sigmoid(logits)
+        all_probs.append(_sanitize_probs_array(probs.cpu().numpy()))
         all_labels.append(y.numpy())
     return np.concatenate(all_probs), np.concatenate(all_labels)
 
@@ -49,7 +58,8 @@ def get_logits(
     for x_num, x_cat, _ in loader:
         x_num = x_num.to(device) if x_num.numel() > 0 else None
         x_cat = x_cat.to(device) if x_cat.numel() > 0 else None
-        all_logits.append(model(x_num, x_cat).cpu().numpy())
+        logits = _sanitize_logits_tensor(model(x_num, x_cat))
+        all_logits.append(logits.cpu().numpy())
     return np.concatenate(all_logits)
 
 
@@ -163,7 +173,8 @@ def relearn_time(
         y = y.to(device)
 
         optimizer.zero_grad()
-        loss = criterion(model_rl(x_num, x_cat), y)
+        logits = _sanitize_logits_tensor(model_rl(x_num, x_cat))
+        loss = criterion(logits, y)
         loss.backward()
         optimizer.step()
 
@@ -200,7 +211,8 @@ def compute_relearn_time(
             y = y.to(device)
 
             optimizer.zero_grad()
-            loss = criterion(model(x_num, x_cat), y)
+            logits = _sanitize_logits_tensor(model(x_num, x_cat))
+            loss = criterion(logits, y)
             loss.backward()
             optimizer.step()
             steps += 1

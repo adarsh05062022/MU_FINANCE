@@ -1,0 +1,2 @@
+method,mia_score,forget_accuracy,forget_confidence,js_divergence,kl_divergence,relearn_steps,retain_auc,test_auc,wall_clock_seconds,speedup_vs_retrain,changed_params,total_params,pct_params_changed,delta_eo,ece
+random_labels,0.0,0.9386690418628324,0.21590840816497803,,,1,0.842697063617309,0.8302044774609589,202.9592685769312,,305266,305281,99.9950864940825,0.0,0.15471850945339743
